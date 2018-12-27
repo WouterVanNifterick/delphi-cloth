@@ -32,13 +32,19 @@ type
     procedure InitWithDefaults;
   public
     destructor Destroy; override;
+    procedure ClearCanvas;
   end;
 
   TClothPoint = class
+
+    type TPointFHelper = record helper for TPointF
+      function SquareDistance(const P2: TPointF): Double;
+    end;
+  var
     World: TWorld;
     Pos:TPointF;
     PrevPos:TPointF;
-    VPos:TPointF;
+    Force:TPointF;
     PinPos:TPointF;
     isPinned:Boolean;
     Constraints: TObjectList<TConstraint>;
@@ -48,7 +54,7 @@ type
     procedure Resolve;
     procedure Attach(aPoint: TClothPoint);
     procedure Free(aConstraint: TConstraint);
-    procedure AddForce(aForce:TPointF);
+    procedure AddForce(const aForce:TPointF);
     procedure Pin;
   private
     procedure CalcBounce(const aRect: TRect);
@@ -70,7 +76,7 @@ type
     World: TWorld;
     Points: TObjectList<TClothPoint>;
     Color:TColor;
-    procedure Add(p:TPointF);
+    procedure Offset(p:TPointF);
     constructor Create(aFree: Boolean; aWorld: TWorld; aXCount, aYCount: integer);
     procedure Update(aDelta: double);
     destructor Destroy; override;
@@ -86,12 +92,11 @@ uses Math;
 
 constructor TClothPoint.Create(aPoint: TPointF; aWorld: TWorld);
 begin
-  World       := aWorld;
-  Pos      := aPoint;
-  PrevPos  := Pos;
-  VPos     := TPointF.Zero;
-  PinPos.X      := 0;
-  PinPos.Y      := 0;
+  World     := aWorld;
+  Pos       := aPoint;
+  PrevPos   := Pos;
+  Force     := TPointF.Zero;
+  PinPos    := TPointF.Zero;
   Constraints := TObjectList<TConstraint>.Create;
 end;
 
@@ -115,7 +120,7 @@ end;
 
 procedure TClothPoint.Update(const aRect: TRect; aDelta: double);
 var
-  dist:Double;
+  sqdist:Double;
   n:TPointF;
 begin
   if isPinned then
@@ -123,17 +128,17 @@ begin
 
   if World.Mouse.IsDown then
   begin
-    dist := Pos.Distance(World.Mouse.Pos);
-    if (World.Mouse.Button = TMouseButton.mbLeft) and (dist < World.Mouse.Influence) then
+    sqdist := Pos.SquareDistance(World.Mouse.Pos);
+    if (World.Mouse.Button = TMouseButton.mbLeft) and (sqdist < sqr(World.Mouse.Influence)) then
       PrevPos := Pos - (World.Mouse.Pos - World.Mouse.PrevPos)
-    else if dist < World.Mouse.Cut then
+    else if sqdist < sqr(World.Mouse.Cut) then
       Constraints.Clear;
   end;
   AddForce(PointF(0, World.Gravity));
-  n := Pos + (Pos - PrevPos) * World.Friction + VPos * aDelta;
+  n       := Pos + (Pos - PrevPos) * World.Friction + Force * aDelta;
   PrevPos := Pos;
-  Pos  := n;
-  VPos := TPointF.Zero;
+  Pos     := n;
+  Force   := TPointF.Zero;
   CalcBounce(aRect);
 end;
 
@@ -142,10 +147,7 @@ var
   i: integer;
 begin
   if isPinned then
-  begin
-    Pos := PinPos;
     Exit;
-  end;
 
   for i := Constraints.Count-1 downto 0 do
     Constraints[i].Resolve;
@@ -161,9 +163,9 @@ begin
   Constraints.Delete(Constraints.IndexOf(aConstraint));
 end;
 
-procedure TClothPoint.AddForce(aForce:TPointF);
+procedure TClothPoint.AddForce(const aForce:TPointF);
 begin
-  VPos := VPos + aForce;
+  Force := Force + aForce;
 end;
 
 procedure TClothPoint.Pin;
@@ -218,17 +220,7 @@ begin
 end;
 
 procedure TConstraint.Draw(aCanvas: TCanvas; aCol:TColor);
-var
-  cr:TColorRec;
-  c:TColor absolute cr;
-  d:byte;
 begin
-{  d := trunc(ensureRange(P1.Pos.Distance(P2.Pos) * 32 - 128,0,255));
-  cr.R := d;
-  cr.G := d;
-  cr.B := d;
-  aCanvas.Pen.Color :=
-}
   aCanvas.Pen.Color := aCol;
   aCanvas.moveTo(Round(P1.Pos.x), Round(P1.Pos.y));
   aCanvas.lineTo(Round(P2.Pos.x), Round(P2.Pos.y));
@@ -236,14 +228,14 @@ end;
 
 { TCloth }
 
-procedure TCloth.Add(p: TPointF);
+procedure TCloth.Offset(p: TPointF);
 var i:integer;
 begin
-  for I := 0 to Points.Count-1 do
+  for I := 0 to Points.Count - 1 do
   begin
     Points[I].Pos.Offset(p);
     Points[I].PrevPos.Offset(p);
-    Points[I].VPos.Offset(p);
+    Points[I].Force.Offset(p);
     Points[I].PinPos.Offset(p);
   end;
 end;
@@ -312,6 +304,12 @@ end;
 
 { TWorld }
 
+procedure TWorld.ClearCanvas;
+begin
+  Buffer.Canvas.Brush.Color := $888888;
+  Buffer.Canvas.FillRect(Buffer.Canvas.ClipRect);
+end;
+
 constructor TWorld.Create;
 begin
   inherited;
@@ -333,8 +331,8 @@ end;
 procedure TWorld.InitWithDefaults;
 begin
   Accuracy := 5;
-  Gravity  := 200;
-  Spacing  := 6;
+  Gravity  := 400;
+  Spacing  := 8;
   TearDist := 60;
   Friction := 0.99;
   Bounce   := 0.5;
@@ -347,5 +345,12 @@ begin
   Mouse.PrevPos:= TPoint.Zero;
 end;
 
+
+{ TClothPoint.TPointFHelper }
+
+function TClothPoint.TPointFHelper.SquareDistance(const P2: TPointF): Double;
+begin
+  Result := Sqr(Self.X - P2.X) + Sqr(Self.Y - P2.Y);
+end;
 
 end.
