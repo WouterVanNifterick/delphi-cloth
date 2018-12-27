@@ -23,6 +23,9 @@ type
     procedure PaintBoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure PaintBoxPaint(Sender: TObject);
     procedure tmr1Timer(Sender: TObject);
+    procedure btnZeroGClick(Sender: TObject);
+  private
+    FLastUpdate:TDateTime;
   public
     World: TWorld;
     Cloths: TObjectList<TCloth>;
@@ -40,15 +43,15 @@ uses Math;
 procedure TfrmMain.btnResetClick(Sender: TObject);
 var i : Integer; Cloth:TCloth;
 begin
-  Cloths.Free;
   World := TWorld.CreateWithDefaults(PaintBox.Width, PaintBox.Height);
 
+  Cloths.Free;
   Cloths := TObjectList<TCloth>.Create;
 
   for I := -1 to 1 do
   begin
-    Cloth := TCloth.Create(False, World, 40, 40);
-    Cloth.Add(PointF(I*200,0));
+    Cloth := TCloth.Create(False, World, 25, 25);
+    Cloth.Offset(PointF(I*200,0));
     Cloth.Color := Random(MaxInt);
     Cloths.Add(Cloth);
   end;
@@ -60,7 +63,10 @@ begin
   World.Free;
 end;
 
-{ TCanvas }
+procedure TfrmMain.btnZeroGClick(Sender: TObject);
+begin
+  World.Gravity := 0;
+end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
@@ -74,10 +80,10 @@ end;
 
 procedure TfrmMain.PaintBoxMouseDown(Sender: TObject; button: TMouseButton; Shift: TShiftState; x, y: integer);
 begin
-  World.Mouse.Button := button;
-  World.Mouse.IsDown   := true;
+  World.Mouse.Button  := button;
+  World.Mouse.IsDown  := true;
   World.Mouse.PrevPos := World.Mouse.Pos;
-  World.Mouse.Pos := Point(x,y);
+  World.Mouse.Pos     := Point(x,y);
 end;
 
 procedure TfrmMain.PaintBoxMouseMove(Sender: TObject; Shift: TShiftState; x,
@@ -87,8 +93,7 @@ begin
   World.Mouse.Pos := Point(x,y);
 end;
 
-procedure TfrmMain.PaintBoxMouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TfrmMain.PaintBoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   World.Mouse.IsDown := false;
 end;
@@ -99,13 +104,13 @@ begin
 end;
 
 procedure TfrmMain.tmr1Timer(Sender: TObject);
-var i:integer;
+var i:integer; TimeDelta:double;
 begin
-  World.Buffer.Canvas.Brush.Color := clWhite;
-  World.Buffer.Canvas.FillRect(World.Buffer.Canvas.ClipRect);
+  TimeDelta := (Now - FLastUpdate)/690000;
+  FLastUpdate := now;
+  World.ClearCanvas;
   for i := 0 to Cloths.Count-1 do
-    Cloths[i].update(0.016);
-
+    Cloths[i].Update(0.016);
   PaintBox.Invalidate;
 end;
 

@@ -48,7 +48,7 @@ object frmMain: TfrmMain
       Top = 1
       Width = 75
       Height = 25
-      Caption = 'btnReset'
+      Caption = 'Reset'
       TabOrder = 0
       OnClick = btnResetClick
     end
@@ -59,6 +59,7 @@ object frmMain: TfrmMain
       Height = 25
       Caption = 'Zero G'
       TabOrder = 1
+      OnClick = btnZeroGClick
     end
   end
   object tmr1: TTimer
