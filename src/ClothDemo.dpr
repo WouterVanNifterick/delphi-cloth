@@ -1,7 +1,6 @@
 program ClothDemo;
 
 uses
-  FastMM4,
   Vcl.Forms,
   Cloth.Main.Form in 'Cloth.Main.Form.pas' {frmMain},
   ClothDemo.Cloth in 'ClothDemo.Cloth.pas';
