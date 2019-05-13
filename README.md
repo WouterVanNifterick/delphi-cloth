@@ -1,4 +1,4 @@
 # delphi-cloth
 Cloth simulation
 
-[!Screenshot](cloth_screenshot.png)
+![Screenshot](cloth_screenshot.png)
